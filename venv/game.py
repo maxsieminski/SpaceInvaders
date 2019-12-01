@@ -1,6 +1,8 @@
 import pygame
 import random
+import time
 import sys
+import os
 
 pygame.init()
 win_size = 700
@@ -8,13 +10,31 @@ clock = pygame.time.Clock()
 window = pygame.display.set_mode((win_size, win_size))
 pygame.display.set_caption("Space Invaders")
 
-playerImg = pygame.image.load('img/player.png').convert_alpha()
-enemyImg = pygame.image.load('img/enemy.png').convert_alpha()
-bulletImg = pygame.image.load('img/shot.png').convert_alpha()
-enemyBulletImg = pygame.image.load('img/enemy_shot.png').convert_alpha()
-backgroundImg = pygame.image.load('img/background.png').convert()
-font = pygame.font.Font("img/CosmicAlien-V4Ax.ttf", 32)
-endFont = pygame.font.Font("img/CosmicAlien-V4Ax.ttf", 64)
+def resource_path(relative_path):
+    try:
+    # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
+pic1 = resource_path('img/player.png')
+pic2 = resource_path('img/enemy.png')
+pic3 = resource_path('img/shot.png')
+pic4 = resource_path('img/enemy_shot.png')
+pic5 = resource_path('img/background.png')
+font1 = resource_path("img/CosmicAlien-V4Ax.ttf")
+
+playerImg = pygame.image.load(pic1).convert_alpha()
+enemyImg = pygame.image.load(pic2).convert_alpha()
+bulletImg = pygame.image.load(pic3).convert_alpha()
+enemyBulletImg = pygame.image.load(pic4).convert_alpha()
+backgroundImg = pygame.image.load(pic5).convert()
+font = pygame.font.Font(font1, 32)
+menuFont = pygame.font.Font(font1, 48)
+endFont = pygame.font.Font(font1, 64)
 
 class Player():
     def __init__(self):
@@ -54,7 +74,7 @@ class Bullet(Player):
         Player.__init__(self)
         self.x =  player_x
         self.y = player_y - playerImg.get_height()
-        self.vel = 7
+        self.vel = 9
         self.img = bulletImg
         self.width = bulletImg.get_width()
         self.height = bulletImg.get_height()
@@ -69,44 +89,13 @@ class enemyBullet(Player):
         self.width = enemyBulletImg.get_width()
         self.height = enemyBulletImg.get_height()
 
-
-player = Player()
-player_lives = 2
-bullet = Bullet(-10, -10)
-enemy_bullet = enemyBullet(-20, -20)
-score = 0
-enemies = []
-enem_bullets = []
-
-def updateGameWindow(player, enemies, bullet):
-    global score
-    scoreTxt = "SCORE: " + str(score)
-    livesTxt = "LIVES: " + str(player.lifes)
-    text = font.render(scoreTxt, True, (0, 255, 0))
-    text1 = font.render(livesTxt, True, (0, 255, 0))
-    window.blit(backgroundImg, (0, 0))
-    window.blit(text, (20, 10))
-    window.blit(text1, (490, 10))
-    player.draw(window)
-    if player.can_shoot is False:
-        bullet.draw(window)
-    for x in enemies:
-        x.draw(window)
-    for x in enem_bullets:
-        x.draw(window)
-    if checkDefeat():
-        defeatTxt = 'GAME OVER'
-        text2 = endFont.render(defeatTxt, True, (255, 0, 0))
-        window.blit(text2, (125,300))
-    pygame.display.update()
-
-def createEnemies(): # creates enemies
+def createEnemies(enemies): # creates enemies
     enemy_x = 10
     enemy_y = 80
     enemy_row = 0
     enemy_column = 0
-    for i in range(55):
-        if i % 11 is 0 and i > 0:
+    for i in range(60):
+        if i % 12 is 0 and i > 0:
             enemy_y += 40
             enemy_x = 10
             enemy_row += 1
@@ -121,19 +110,18 @@ def moveEnemies(enemies): # defines enemy movement
     for enemy in enemies:
         if enemy.x == win_size - enemy.width:
             for x in enemies:
-                x.y += 4
+                x.y += 3
                 x.left = False
         elif enemy.x == 0:
             for x in enemies:
-                x.y += 4
+                x.y += 3
                 x.left = True
         if enemy.left:
             enemy.x += enemy.vel
         else:
             enemy.x -= enemy.vel
 
-def hitEnemies(enemies, bullet): # defines when enemy is hit
-    global score
+def hitEnemies(enemies, bullet, score, player, diffculty): # defines when enemy is hit
     for x in enemies:
         try:
             if bullet.y - bullet.width < x.hitbox[1] + x.hitbox[3] and bullet.y + bullet.width > x.hitbox[1]:
@@ -141,11 +129,22 @@ def hitEnemies(enemies, bullet): # defines when enemy is hit
                     enemies.remove(x)
                     player.can_shoot = True
                     bullet.x = -30
-                    score += 10
+                    if diffculty == "EASY":
+                        score += 5
+                    if diffculty == "MEDIUM":
+                        score += 10
+                    if diffculty == "HARD":
+                        score += 15
         except ValueError:
             player.can_shoot = True
             bullet.x = -30
-            score += 10
+            if diffculty == "EASY":
+                score += 5
+            if diffculty == "MEDIUM":
+                score += 10
+            if diffculty == "HARD":
+                score += 15
+    return score
 
 def moveBullet(bullet, player): # defines bullet movement
     if bullet.y > 0 and not player.can_shoot:
@@ -153,7 +152,7 @@ def moveBullet(bullet, player): # defines bullet movement
     else:
         player.can_shoot = True
 
-def enemyShooters(): # defines which enemies can shoot but its written like shit
+def enemyShooters(enemies): # defines which enemies can shoot but its written like shit
     for enemy in enemies:
         li = {0: [x.column for x in enemies if x.row is 0], 1: [x.column for x in enemies if x.row is 1], 2: [x.column for x in enemies if x.row is 2],
               3: [x.column for x in enemies if x.row is 3], 4: [x.column for x in enemies if x.row is 4]}
@@ -163,12 +162,21 @@ def enemyShooters(): # defines which enemies can shoot but its written like shit
         except KeyError:
             enemy.can_shoot = True
 
-def enemyShooting(): # defines randomly which enemies will be shooting
+def enemyShooting(enemies, enem_bullets, difficulty): # defines randomly which enemies will be shooting
     for x in enemies:
         if x.can_shoot is True:
-            if random.randint(0, 10000) > 9965:
-                enemy_bullet = enemyBullet(x.x, x.y + x.height)
-                enem_bullets.append(enemy_bullet)
+            if difficulty == "EASY":
+                if random.randint(0, 10000) > 9985:
+                    enemy_bullet = enemyBullet(x.x, x.y + x.height)
+                    enem_bullets.append(enemy_bullet)
+            elif difficulty == "MEDIUM":
+                if random.randint(0, 10000) > 9970:
+                    enemy_bullet = enemyBullet(x.x, x.y + x.height)
+                    enem_bullets.append(enemy_bullet)
+            elif difficulty == "HARD":
+                if random.randint(0, 10000) > 9950:
+                    enemy_bullet = enemyBullet(x.x, x.y + x.height)
+                    enem_bullets.append(enemy_bullet)
 
     for x in enem_bullets:
         if x.y < win_size:
@@ -176,54 +184,168 @@ def enemyShooting(): # defines randomly which enemies will be shooting
         else:
             enem_bullets.remove(x)
 
-def hitPlayer(): # defines when player is hit
+def hitPlayer(enem_bullets, player): # defines when player is hit
     for bullet in enem_bullets:
         if bullet.y - bullet.width < player.hitbox[1] + player.hitbox[3] and bullet.y + bullet.width > player.hitbox[1]:
             if bullet.x + bullet.width > player.hitbox[0] and bullet.x - bullet.width < player.hitbox[0] + player.hitbox[2]:
                 enem_bullets.remove(bullet)
                 player.lifes -= 1
 
-def checkDefeat():
+def checkDefeat(enemies, player):
     for x in enemies:
         if x.y >= player.y:
             return True
-        elif player.lifes is 0:
+        elif player.lifes <= 0:
             return True
 
+def updateGameWindow(player, enemies, bullet, score, enem_bullets):
+    scoreTxt = "SCORE: " + str(score)
+    livesTxt = "LIVES: " + str(player.lifes)
+    text = font.render(scoreTxt, True, (0, 255, 0))
+    text1 = font.render(livesTxt, True, (0, 255, 0))
+    window.blit(backgroundImg, (0, 0))
+    window.blit(text, (20, 10))
+    window.blit(text1, (490, 10))
+    player.draw(window)
+    if not checkDefeat(enemies, player):
+        if player.can_shoot is False:
+            bullet.draw(window)
+        for x in enemies:
+            x.draw(window)
+        for x in enem_bullets:
+            x.draw(window)
+    if checkDefeat(enemies, player):
+        defeatTxt = 'GAME OVER'
+        text2 = endFont.render(defeatTxt, True, (255, 0, 0))
+        window.blit(text2, (125,300))
+    pygame.display.update()
 
-while True:
-    clock.tick(56)
-    keys = pygame.key.get_pressed()
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit(0)
+def main(difficulty):
+    player = Player()
+    player_lives = 2
+    bullet = Bullet(-10, -10)
+    enemy_bullet = enemyBullet(-20, -20)
+    score = 0
+    enemies = []
+    enem_bullets = []
+    halt = False
 
-    if len(enemies) is 0:
-        createEnemies()
-        player.lifes += 1
+    while True:
+        clock.tick(56)
+        keys = pygame.key.get_pressed()
 
-    if keys[pygame.K_LEFT] and player.x > 0:
-        player.x -= player.vel
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit(0)
 
-    if keys[pygame.K_RIGHT] and player.x < (win_size - player.width):
-        player.x += player.vel
+        if len(enemies) is 0:
+            createEnemies(enemies)
+            player.lifes += 1
 
-    if keys[pygame.K_SPACE] and player.can_shoot:
-        player.can_shoot = False
-        bullet = Bullet(player.x, player.y)
-        bullet.draw(window)
+        if keys[pygame.K_LEFT] and player.x > 0:
+            player.x -= player.vel
 
-    if checkDefeat():
-        player.can_shoot = False
-        enem_bullets.clear()
+        if keys[pygame.K_RIGHT] and player.x < (win_size - player.width):
+            player.x += player.vel
 
+        if keys[pygame.K_SPACE] and player.can_shoot:
+            player.can_shoot = False
+            bullet = Bullet(player.x, player.y)
+            bullet.draw(window)
+
+        if checkDefeat(enemies, player):
+            player.can_shoot = False
+            enem_bullets.clear()
+
+        if keys[pygame.K_ESCAPE] and checkDefeat(enemies, player):
+            mainMenu()
+            break
+
+        if keys[pygame.K_ESCAPE]:
+            halt = not halt
+
+        else:
+            if halt == False:
+                enemyShooters(enemies)
+                enemyShooting(enemies, enem_bullets, difficulty)
+                hitPlayer(enem_bullets, player)
+                moveEnemies(enemies)
+                moveBullet(bullet, player)
+                if not checkDefeat(enemies, player):
+                    score = hitEnemies(enemies, bullet, score, player, difficulty)
+                updateGameWindow(player, enemies, bullet, score, enem_bullets)
+
+
+def mainMenu():
+    GREEN = (0, 255, 0)
+    RED = (255, 0, 0)
+    headText = endFont.render("SPACE INVADERS", True, GREEN)
+    inMenu = True
+    choice = 0
+    difficulty = "EASY"
+
+    while inMenu:
+        clock.tick(10)
+        keys = pygame.key.get_pressed()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit(0)
+
+        if keys[pygame.K_DOWN] and choice == 0:
+            choice = 1
+        elif keys[pygame.K_UP] and choice == 0:
+            choice = 2
+        elif keys[pygame.K_UP] and choice == 1:
+            choice = 0
+        elif keys[pygame.K_DOWN] and choice == 1:
+            choice = 2
+        elif keys[pygame.K_UP] and choice == 2:
+            choice = 1
+        elif keys[pygame.K_DOWN] and choice == 2:
+            choice = 0
+        if keys[pygame.K_RIGHT] and difficulty == "EASY" and choice == 1:
+            difficulty = "MEDIUM"
+        elif keys[pygame.K_RIGHT] and difficulty == "MEDIUM" and choice == 1:
+            difficulty = "HARD"
+        elif keys[pygame.K_RIGHT] and difficulty == "HARD" and choice == 1:
+            difficulty = "EASY"
+        elif keys[pygame.K_LEFT] and difficulty == "EASY" and choice == 1:
+            difficulty = "HARD"
+        elif keys[pygame.K_LEFT] and difficulty == "HARD" and choice == 1:
+            difficulty = "MEDIUM"
+        elif keys[pygame.K_LEFT] and difficulty == "MEDIUM" and choice == 1:
+            difficulty = "EASY"
+
+        if choice == 0:
+            playText = menuFont.render("PLAY GAME", True, RED)
+            difficultyText = menuFont.render("DIFFICLUTY: " + difficulty, True, GREEN)
+            quitText = menuFont.render("EXIT", True, GREEN)
+        if choice == 1:
+            playText = menuFont.render("PLAY GAME", True, GREEN)
+            difficultyText = menuFont.render("DIFFICLUTY: " + difficulty, True, RED)
+            quitText = menuFont.render("EXIT", True, GREEN)
+        if choice == 2:
+            playText = menuFont.render("PLAY GAME", True, GREEN)
+            difficultyText = menuFont.render("DIFFICLUTY: " + difficulty, True, GREEN)
+            quitText = menuFont.render("EXIT", True, RED)
+        if keys[pygame.K_RETURN] and choice != 1:
+            break
+
+        window.blit(backgroundImg, (0, 0))
+        window.blit(headText, (20, 100))
+        window.blit(playText, (10, win_size / 2 - 50))
+        window.blit(difficultyText, (10, win_size / 2 + 50))
+        window.blit(quitText, (10, win_size / 2 + 150))
+        pygame.display.update()
+
+    if choice == 0:
+        main(difficulty)
     else:
-        enemyShooters()
-        enemyShooting()
-        hitPlayer()
-        moveEnemies(enemies)
-        moveBullet(bullet, player)
-        hitEnemies(enemies, bullet)
-    updateGameWindow(player, enemies, bullet)
+        pygame.quit()
+        sys.exit(0)
+
+mainMenu()
