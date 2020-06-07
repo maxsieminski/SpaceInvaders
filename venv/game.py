@@ -53,7 +53,7 @@ class Player():
         self.hitbox = (self.x - 5, self.y - 5, self.width + 10, self.height + 10)
         if self.draw_hitbox:
             pygame.draw.rect(window, (255, 0, 0), self.hitbox, 2)
-        window.blit(self.img, (self.x, self.y))
+        window.blit(self.img, (round(self.x), round(self.y)))
 
 class Enemy(Player):
     def __init__(self, x, y, row, column):
@@ -95,7 +95,7 @@ def createEnemies(enemies): # creates enemies
     enemy_row = 0
     enemy_column = 0
     for i in range(60):
-        if i % 12 is 0 and i > 0:
+        if i % 12 == 0 and i > 0:
             enemy_y += 40
             enemy_x = 10
             enemy_row += 1
@@ -107,18 +107,15 @@ def createEnemies(enemies): # creates enemies
     return enemies
 
 def moveEnemies(enemies): # defines enemy movement
-    for enemy in enemies:
-        if enemy.x == win_size - enemy.width:
-            for x in enemies:
-                x.y += 3
-                x.left = False
-        elif enemy.x == 0:
-            for x in enemies:
-                x.y += 3
-                x.left = True
-        if enemy.left:
+    if any(enemy.x == win_size - enemy.width or enemy.x == 0 for enemy in enemies):
+        for x in enemies:
+            x.y += 6
+            x.left = not x.left
+    if any(enemy.left for enemy in enemies):
+        for enemy in enemies:
             enemy.x += enemy.vel
-        else:
+    else:
+        for enemy in enemies:
             enemy.x -= enemy.vel
 
 def hitEnemies(enemies, bullet, score, player, diffculty): # defines when enemy is hit
@@ -154,8 +151,8 @@ def moveBullet(bullet, player): # defines bullet movement
 
 def enemyShooters(enemies): # defines which enemies can shoot but its written like shit
     for enemy in enemies:
-        li = {0: [x.column for x in enemies if x.row is 0], 1: [x.column for x in enemies if x.row is 1], 2: [x.column for x in enemies if x.row is 2],
-              3: [x.column for x in enemies if x.row is 3], 4: [x.column for x in enemies if x.row is 4]}
+        li = {0: [x.column for x in enemies if x.row == 0], 1: [x.column for x in enemies if x.row == 1], 2: [x.column for x in enemies if x.row == 2],
+              3: [x.column for x in enemies if x.row == 3], 4: [x.column for x in enemies if x.row == 4]}
         try:
             if enemy.column not in li[enemy.row + 1]:
                  enemy.can_shoot = True
@@ -240,7 +237,7 @@ def main(difficulty):
                 pygame.quit()
                 sys.exit(0)
 
-        if len(enemies) is 0:
+        if len(enemies) == 0:
             createEnemies(enemies)
             player.lifes += 1
 
@@ -287,7 +284,7 @@ def mainMenu():
     difficulty = "EASY"
 
     while inMenu:
-        clock.tick(10)
+        clock.tick(7)
         keys = pygame.key.get_pressed()
 
         for event in pygame.event.get():
@@ -337,9 +334,9 @@ def mainMenu():
 
         window.blit(backgroundImg, (0, 0))
         window.blit(headText, (20, 100))
-        window.blit(playText, (10, win_size / 2 - 50))
-        window.blit(difficultyText, (10, win_size / 2 + 50))
-        window.blit(quitText, (10, win_size / 2 + 150))
+        window.blit(playText, (10, round(win_size / 2 - 50)))
+        window.blit(difficultyText, (10, round(win_size / 2 + 50)))
+        window.blit(quitText, (10, round(win_size / 2 + 150)))
         pygame.display.update()
 
     if choice == 0:
